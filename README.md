@@ -1,6 +1,6 @@
-# 🔌 MCP Action Gateway
+# MCP Action Gateway
 
-> A production-minded Model Context Protocol (MCP) portfolio project that turns typed tool calls into controlled operational actions through policy, approval, and audit boundaries.
+> A Python Model Context Protocol (MCP) gateway that turns typed tool calls into controlled operational actions through policy, approval, and audit boundaries.
 
 [![Python CI](https://github.com/pranay-eligeti/mcp-action-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/pranay-eligeti/mcp-action-gateway/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python)
@@ -59,13 +59,13 @@ Read-only view of the local audit trail.
 
 ## Quick start
 
-The official MCP Python SDK v2 is the current stable line. The project pins `mcp>=2,<3` so the repository stays on that API line. See the official SDK and documentation for current details.
+Requires Python 3.10+; CI runs on Python 3.12. The project pins `mcp>=2,<3` and uses `MCPServer` and the in-memory `Client` API.
 
 ```bash
 python -m venv .venv
 
 # Windows
-.venv\\Scripts\\activate
+.venv\Scripts\activate
 
 # macOS/Linux
 source .venv/bin/activate
@@ -98,6 +98,33 @@ The optional n8n adapter does nothing unless `N8N_WEBHOOK_URL` is configured; th
 
 **In-memory testing**  
 The official MCP SDK supports testing a server through an in-memory `Client(mcp)` connection, so tests avoid a running port or subprocess.
+
+## Try a controlled action
+
+From the repository root, this credential-free example invokes the real MCP protocol in memory:
+
+```python
+import asyncio
+from mcp import Client
+from src.server import mcp
+
+async def main():
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "run_action", {"action": "log_event", "message": "portfolio demo"}
+        )
+        print(result.structured_content)
+
+asyncio.run(main())
+```
+
+The result contains `{"status": "ok", "action": "log_event"}`. The test suite verifies tool discovery, event execution/auditing, rejection of unapproved n8n actions, and rejection of unknown actions.
+
+## Integration boundaries
+
+`N8N_WEBHOOK_URL` is read from the process environment when the server is imported. An approved `notify_n8n` call posts JSON with a 10-second timeout; without a URL it records a dry run. The `approved` flag is supplied by the MCP caller: a deployed host must establish human authorization before setting it. This flag is an action-policy check, not user authentication.
+
+The audit trail is in memory. Durable storage, retries, and idempotency are extension points rather than implemented guarantees.
 
 ## Extending the gateway
 
