@@ -4,3 +4,14 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
+
+# Local configuration, generated exports, and private keys
+.env.*
+!.env.example
+scratch/
+output/
+*.pem
+*.key
+.ruff_cache/
+build/
+dist/

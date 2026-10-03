@@ -28,7 +28,9 @@ class ActionRegistry:
             "execution": "allowlisted-actions-only",
         }
 
-    async def run_action(self, action: str, payload: dict[str, str], approved: bool = False) -> dict[str, str]:
+    async def run_action(
+        self, action: str, payload: dict[str, str], approved: bool = False
+    ) -> dict[str, str]:
         try:
             self.policy.authorize(action, approved=approved)
             if action == "notify_n8n":
@@ -47,8 +49,12 @@ class ActionRegistry:
             self.audit.record("notify_n8n", "dry_run", "No webhook configured")
             return {"status": "dry_run", "action": "notify_n8n"}
 
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.post(self.config.n8n_webhook_url, json=payload)
-            response.raise_for_status()
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(self.config.n8n_webhook_url, json=payload)
+                response.raise_for_status()
+        except httpx.HTTPError:
+            # HTTP exception text can include a private webhook URL or query token.
+            raise RuntimeError("n8n webhook delivery failed") from None
         self.audit.record("notify_n8n", "success", "Webhook delivered")
         return {"status": "sent", "action": "notify_n8n"}

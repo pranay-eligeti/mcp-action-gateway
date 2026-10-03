@@ -3,8 +3,7 @@
 > A Python Model Context Protocol (MCP) gateway that turns typed tool calls into controlled operational actions through policy, approval, and audit boundaries.
 
 [![Python CI](https://github.com/pranay-eligeti/mcp-action-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/pranay-eligeti/mcp-action-gateway/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python)
-![MCP](https://img.shields.io/badge/MCP-2026%20SDK-purple)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![Tests](https://img.shields.io/badge/tests-pytest-orange)
 
 ## Why this project
@@ -17,26 +16,16 @@ It contains no employer credentials, PHI, private workflow definitions, or priva
 
 ## Architecture
 
-```text
-LLM / MCP host
-      |
-      v
-MCP Server (typed tools)
-      |
-      v
-Policy / allowlist
-      |
-      +--> approval gate for sensitive action
-      |
-      v
-Action Registry
-   |          |
-   |          +--> optional n8n webhook
-   |
-   +--> local event action
-      |
-      v
-Audit Log
+```mermaid
+flowchart TD
+    A[MCP host] --> B[Typed tools and read-only resources]
+    B --> C[Action allowlist and approval check]
+    C --> D[Action registry]
+    D --> E[Local event]
+    D --> F[Optional n8n webhook or dry run]
+    C --> G[Structured in-memory audit]
+    E --> G
+    F --> G
 ```
 
 ## Exposed MCP primitives
@@ -62,6 +51,8 @@ Read-only view of the local audit trail.
 Requires Python 3.10+; CI runs on Python 3.12. The project pins `mcp>=2,<3` and uses `MCPServer` and the in-memory `Client` API.
 
 ```bash
+git clone https://github.com/pranay-eligeti/mcp-action-gateway.git
+cd mcp-action-gateway
 python -m venv .venv
 
 # Windows
@@ -72,6 +63,8 @@ source .venv/bin/activate
 
 pip install -e ".[dev]"
 pytest -q
+ruff check src tests
+ruff format --check src tests
 ```
 
 Run the server over Streamable HTTP:
@@ -124,11 +117,9 @@ The result contains `{"status": "ok", "action": "log_event"}`. The test suite ve
 
 `N8N_WEBHOOK_URL` is read from the process environment when the server is imported. An approved `notify_n8n` call posts JSON with a 10-second timeout; without a URL it records a dry run. The `approved` flag is supplied by the MCP caller: a deployed host must establish human authorization before setting it. This flag is an action-policy check, not user authentication.
 
+Webhook transport failures expose a generic error instead of the private URL or response body. Tests mock both delivery and failures without network calls.
+
 The audit trail is in memory. Durable storage, retries, and idempotency are extension points rather than implemented guarantees.
-
-## Extending the gateway
-
-A natural next step is a typed connector layer for additional actions such as ticket creation, CRM updates, or workflow triggers. Each connector should remain behind the same policy, approval, timeout, retry, idempotency, and audit boundary.
 
 ## Security / privacy
 

@@ -1,7 +1,7 @@
 import pytest
 from mcp import Client
 
-from src.server import mcp, policy, audit_log
+from src.server import audit_log, mcp, policy
 
 
 @pytest.mark.asyncio
